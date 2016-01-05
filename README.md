@@ -8,7 +8,7 @@ Unforunately, the site can be slow to process the visualizations and relies on S
 My fork of this github repository is a personal project to redo the website using open source tools.
 
 Atlas Data
-==========
+----------
 
 This file contains the information about how to create the Atlas variables from the World Trade Data reported by Centre d’Etudes Prospectives et d’Informations Internationales (CEPII) in the BACI Dataset.
 
