@@ -1,0 +1,86 @@
+---
+title: 'Atlas of Economic Complexity: Test Run in R'
+author: "Raymond Buhr"
+date: "January 5, 2016"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+This document serves as an example of using the U.N. Comtrade API to collect data on imports and exports for countries over time. 
+
+### Load dependent libraries
+
+```{r}
+library(RCurl)
+library(dplyr)
+library(jsonlite)
+library(ggplot2)
+library(ggvis)
+```
+
+## Data Collection
+
+Full API Documentation available at http://comtrade.un.org/data/Doc/api/ex/r
+```{r}
+test_api_call <- "http://comtrade.un.org/api/get?max=50000&type=C&freq=A&px=HS&ps=2013&r=826&p=0&rg=all&cc=AG2&fmt=json"
+un_data <- getURL(test_api_call)
+un_data <- fromJSON(un_data)
+un_data <- data.frame(un_data$dataset)
+head(un_data)
+```
+
+## Data Processing
+
+Reference Tables for the Comtrade Database available at
+http://unstats.un.org/unsd/tradekb/Knowledgebase/UN-Comtrade-Reference-Tables
+
+```{r, echo=FALSE}
+print("TODO")
+```
+
+## Data Analysis
+
+What are the basic net trade statistics for the U.K. in 2013?
+
+```{r}
+net_trade <- un_data %>% 
+    group_by(rgDesc) %>%
+    summarise(trade_value = sum(TradeValue))
+    
+ggplot(data = net_trade, aes(x = rgDesc, y = trade_value)) + 
+    geom_bar(stat = "identity", fill = "#00cc7a", color = '#333333') + 
+    ggtitle("U.K. Intl. Trade in 2013")
+```
+
+What were the net trade statistics by category?
+
+```{r}
+net_categories <- un_data %>% 
+    mutate(trade_type = rgDesc, 
+           trade_category = cmdDescE) %>%
+    group_by(trade_type, trade_category) %>%
+    summarise(trade_value = sum(TradeValue)) %>%
+    filter(trade_value > mean(trade_value))
+    
+net_categories$trade_category_abbr <- gsub(" and | or | of | the ", 
+                                           " ",
+                                           net_categories$trade_category)
+
+net_categories$trade_category_abbr <- gsub(";.*$", 
+                                           "",
+                                           net_categories$trade_category)
+
+net_categories$trade_category_abbr <- substr(net_categories$trade_category_abbr, 1, 32)
+
+net_categories %>% 
+    ggvis(y = ~factor(trade_category_abbr), fill = ~factor(trade_type)) %>%
+    compute_stack(stack_var = ~trade_value, group_var = ~trade_category_abbr) %>%
+    layer_rects(x = ~stack_lwr_, x2 = ~stack_upr_, height = band()) %>%
+    add_axis("x", properties = axis_props(
+    grid = list(stroke = "gray"),
+    ticks = list(stroke = "blue", strokeWidth = 2),
+    labels = list(angle = 45, align = "left", fontSize = 12))) %>%
+    add_axis("y", title_offset = 225)
+```
+
